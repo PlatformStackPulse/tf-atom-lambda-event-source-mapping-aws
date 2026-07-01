@@ -3,9 +3,47 @@
 [![CI](https://github.com/PlatformStackPulse/tf-atom-lambda-event-source-mapping-aws/actions/workflows/ci.yml/badge.svg)](https://github.com/PlatformStackPulse/tf-atom-lambda-event-source-mapping-aws/actions/workflows/ci.yml)
 ![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.6.0-blueviolet)
 
-## Purpose
+Terraform atom that manages an AWS Lambda **event source mapping** — wiring a poll-based event source (SQS, DynamoDB Streams, or Kinesis) to a Lambda function.
 
-Terraform atom: AWS Lambda Event Source Mapping - connects event sources to Lambda functions.
+## Features
+
+- Creates an `aws_lambda_event_source_mapping` linking an event source ARN to a Lambda function.
+- Configurable `batch_size`, `starting_position` (for stream sources), and per-mapping enable/disable (`mapping_enabled`).
+- Follows the [tf-label](https://github.com/PlatformStackPulse/tf-label) context convention: full naming/tagging context chaining and a module-level `enabled` switch that provisions zero resources when set to `false`.
+- Outputs the mapping `uuid` and `state` for downstream wiring.
+
+## Usage
+
+```hcl
+module "sqs_to_lambda" {
+  source = "git::https://github.com/PlatformStackPulse/tf-atom-lambda-event-source-mapping-aws.git?ref=v1.0.0"
+
+  namespace = "eg"
+  stage     = "prod"
+  name      = "orders"
+
+  event_source_arn = aws_sqs_queue.orders.arn
+  function_name    = aws_lambda_function.processor.arn
+
+  batch_size = 10
+}
+```
+
+For a stream-based source (DynamoDB Streams / Kinesis), also set `starting_position`:
+
+```hcl
+module "stream_to_lambda" {
+  source = "git::https://github.com/PlatformStackPulse/tf-atom-lambda-event-source-mapping-aws.git?ref=v1.0.0"
+
+  namespace = "eg"
+  stage     = "prod"
+  name      = "events"
+
+  event_source_arn  = aws_dynamodb_table.events.stream_arn
+  function_name     = aws_lambda_function.processor.arn
+  starting_position = "LATEST"
+}
+```
 
 ## Module Documentation
 
@@ -70,3 +108,19 @@ Terraform atom: AWS Lambda Event Source Mapping - connects event sources to Lamb
 | <a name="output_state"></a> [state](#output\_state) | State of the event source mapping |
 | <a name="output_uuid"></a> [uuid](#output\_uuid) | UUID of the event source mapping |
 <!-- END_TF_DOCS -->
+
+## Tests
+
+Unit tests live under `tests/unit/` and use the Terraform test framework with a
+mocked AWS provider (no real AWS calls, no credentials required). They assert on
+plan-known values: the `enabled` output, planned resource count, and input
+pass-throughs.
+
+```bash
+# Run unit tests
+terraform init -backend=false
+terraform test -test-directory=tests/unit
+
+# Or via the Makefile
+make test-unit
+```
