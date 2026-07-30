@@ -33,3 +33,13 @@ variable "starting_position" {
   type        = string
   default     = null
 }
+
+variable "function_response_types" {
+  description = "Response types the Lambda returns to the event source. Set to [\"ReportBatchItemFailures\"] on an SQS mapping so the function can report per-message failures and only failed messages are redelivered instead of the whole batch. Default [] preserves prior behaviour (argument omitted from the resource)."
+  type        = list(string)
+  default     = []
+  validation {
+    condition     = length(var.function_response_types) <= 1 && alltrue([for v in var.function_response_types : v == "ReportBatchItemFailures"])
+    error_message = "function_response_types must be either [] or [\"ReportBatchItemFailures\"] (the only value AWS accepts)."
+  }
+}
