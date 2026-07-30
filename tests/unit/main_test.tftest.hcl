@@ -69,3 +69,33 @@ run "disabled_creates_nothing" {
     error_message = "uuid output must be null when the module creates nothing"
   }
 }
+
+# ---------------------------------------------------------------------------
+# Test: function_response_types defaults to [] and is sent to the resource
+# as null (argument omitted), so behaviour matches the pre-input plan.
+# ---------------------------------------------------------------------------
+run "function_response_types_default_is_null_on_resource" {
+  command = plan
+
+  assert {
+    condition     = aws_lambda_event_source_mapping.this[0].function_response_types == null
+    error_message = "Default (empty list) input must land as null on the resource so the argument is omitted."
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Test: function_response_types = ["ReportBatchItemFailures"] passes through
+# unchanged to the resource.
+# ---------------------------------------------------------------------------
+run "function_response_types_report_batch_item_failures_passes_through" {
+  command = plan
+
+  variables {
+    function_response_types = ["ReportBatchItemFailures"]
+  }
+
+  assert {
+    condition     = length(aws_lambda_event_source_mapping.this[0].function_response_types) == 1 && contains(aws_lambda_event_source_mapping.this[0].function_response_types, "ReportBatchItemFailures")
+    error_message = "function_response_types must be passed through to the resource unchanged."
+  }
+}
